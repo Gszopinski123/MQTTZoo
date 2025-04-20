@@ -5,48 +5,25 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unordered_map>
+#include <vector>
 #define PORT 5001
 using namespace std;
+#include "mqtt_broker.h"
 
 
-enum messagerType { PUB, SUB, ERR };
-class Messager {
-    private:
-        messagerType t;
-        string topic;
-        string ipaddr;
-        int fd;
-    public:
-        Messager(messagerType it, string itopic) {
-            t = it;
-            for (int i = 0; i != itopic.length(); i++)
-                topic += itopic[i];
-        }
-        void toString() {
-            cout << "Type: " << t << ", topic: "<< topic << ", From: "<< ipaddr << endl;
-        }
-        void setIp(char iipaddr[]) {
-            for (int i = 0; i != strlen(iipaddr); i++) {
-                ipaddr += iipaddr[i];
-            }
-        }
-        void setFd(int ifd) {
-            fd = ifd;
-        }
-        int getFd() {
-            return fd;
-        }
-};
 void* parseConnection(char *buf);
 void* acceptConnection(int sockfd);
 int setupServer(void);
 int main(int argc, char** argv) {
     fd_set current_sockets, ready_sockets;
+    unordered_map<int, Messager> who;
+    unordered_map<string, vector<int>> topic_to_Sub;
     char buf[512];
     int socketfd = setupServer();
     FD_ZERO(&current_sockets);
     FD_SET(socketfd,&current_sockets);
-    while (1) {
+    while (1) { 
         ready_sockets = current_sockets;
         if (select(FD_SETSIZE, &ready_sockets, NULL , NULL, NULL) < 0) {
             printf("Select Failure\n");
@@ -58,13 +35,33 @@ int main(int argc, char** argv) {
                     Messager *m = (Messager*)acceptConnection(socketfd);
                     printf("New Connection Acceptfd: %d\n",m->getFd());
                     FD_SET(m->getFd(),&current_sockets);
-                    m->toString();
+                    if (m->gett() == 1) {
+                        if (topic_to_Sub.find(m->getTopic()) != topic_to_Sub.end())
+                            topic_to_Sub[m->getTopic()].push_back(m->getFd());
+                        else {
+                            vector<int> l = {0, m->getFd()};
+                            topic_to_Sub[m->getTopic()] = l;
+                        }
+                    } else if (m->gett() == 0) {
+                        who[m->getFd()] = *m;
+                        if (topic_to_Sub.find(m->getTopic()) != topic_to_Sub.end()) {
+                            topic_to_Sub[m->getTopic()][0] += 1;
+                        } else {
+                            vector<int> l = {1};
+                            topic_to_Sub[m->getTopic()] = l;
+                        }
+                    }
                 } else {
+                    Messager m = who[i];
                     bzero(buf,511);
                     int bytes = recv(i,buf,511,0);
                     if (strlen(buf) != 0) {
                         cout << "Message Received!" << " Bytes Received: " << bytes <<endl;
-                    cout << buf << endl;
+                        cout << buf << endl;
+                        vector<int> j = topic_to_Sub[m.getTopic()];
+                        for (int i = 1; i != j.size(); i++) {
+                            send(j[i],buf,511,0);// check if still open
+                        }
                     }
                     if (bytes == 0) {
                         FD_CLR(i,&current_sockets);
