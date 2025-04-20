@@ -25,6 +25,11 @@ int main(int argc, char** argv) {
         printf("Connect Failure\n");
     }
     send(socketfd, buf, 512, 0);
+    while (1) {
+        bzero(buf,512);
+        recv(socketfd,buf,511,0);
+        cout << buf << endl;
+    }
     close(socketfd);
     return 0;
 }
