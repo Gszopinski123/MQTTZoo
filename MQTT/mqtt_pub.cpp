@@ -35,17 +35,42 @@ int main(int argc, char** argv) {
     close(socketfd);
     return 0;
 }
+/* First 4 bits
+ * Connect 1
+ * ConnAck 2
+ * Publish 3
+ * Subscribe 8
+ * Disconnect 14
+ * Second 4 bits (flags)
+ * DUP - Duplicate (3 bit)
+ * QoS - Quality of service (bit 2 and 1)
+ * RETAIN (bit 0)
+ * Going to max the first message at 256 bytes 
+ * */
 char* firstMessage(char* topic, char* initialData) {
-    char* message = (char*)malloc(sizeof(char)*512);
+    char* message = (char*)malloc(sizeof(char)*256);
     int lenTopic = strlen(topic);
-    bzero(message,512);
+    bzero(message,256);
     int offset = 0;
-    memcpy(message+offset,"Publisher",9);
-    offset += 9;
-    memcpy(message+offset, "\n" ,1);
+    char *conn = 0;
+    *conn = (*conn & 0) | 1;// first byte
+    char *remainingLength = 0;
+    *remainingLength = (*remainingLength & 0) | 8;
+    char *protocolLength = 0;
+    *protocolLength = (*protocolLength & 0) | 4;//1 bytes
+    char protocol[5] = "MQTT";// 4 bytes
+    char protocolLevel = '4';//1 byte
+    //no connect flag
+    //keep alive 2 bytes
+    char keepalive[3] = "60";//total variable length = 8 bytes
+    memcpy(message+offset,conn,1);
     offset += 1;
-    memcpy(message+offset,"Topic: ",7);
-    offset += 7;
+    memcpy(message+offset,remainingLength,4);
+    offset += 1;
+    memcpy(message+offset,protocolLength,1);
+    offset += 1;
+    memcpy(message+offset,protocol,4);
+    offset += 4;
     memcpy(message+offset, topic, lenTopic);
     offset += lenTopic;
     memcpy(message+offset, "\n" ,1);
