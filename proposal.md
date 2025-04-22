@@ -1,5 +1,5 @@
 # MQTTZoo Proposal
-Author: Gabriel Szopinski
+Author: Gabriel Szopinski  
 I wish to implement MQTT with Zookeeper.
 
 ## Problem/Scenario
