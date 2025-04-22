@@ -48,4 +48,4 @@ and a service in kubernetes. I plan on exposing the service so the application i
 ### Conclusion
 My main goal is to get a handle on setting up this Distributed System. 
 my next goal is I hope to complete this project in a little under two weeks. 
-I will implement the MQTT Broker(TCP) onto kubernetes with Zookeeper with only the Publisher/Subscriber source code connection.
+I will implement the MQTT Broker(TCP) onto kubernetes with Zookeeper with only the Publisher/Subscriber source code connection. The repo for the code can be found [here](https://github.com/Gszopinski123/MQTTZoo/)
