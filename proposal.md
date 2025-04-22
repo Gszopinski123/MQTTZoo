@@ -36,10 +36,10 @@ My version of MQTT will be implemented in C++ and will follow basic standarizati
 *  UDP (time permitting)
 *  Zookeeper
 *  MQTT
-*  Kubernetes
-  *  pods  
-  *  services  
-  *  StatefulSet (most likely)  
+*  Kubernetes  
+   *  pods  
+   *  services  
+   *  StatefulSet (most likely)  
 *  I will be implementing this all in C++
 
 ### Professor Confirmation  
