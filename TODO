@@ -1,5 +1,6 @@
 * setup MQTT broker, pub, sub working ✅
-* fine tune the broker, pub, sub
+* fine tune the broker, pub, sub 
+* need to make packet adjustments
 * add error checking and clearing of unopen sockets
 * Test Broker extensively
 * clear memory of anything that is no longer in use (memory checks)
