@@ -10,7 +10,7 @@ My proposal is to implement MQTT with Zookeeper. I believe that my use of Zookee
 I plan on using zookeeper to manage the topics, subscribers, publishers in znodes. I also plan on adding a banking system that keeps track of large messages and time to live mail drops. I will do this over a statefulset
 and headless service in kubernetes. I plan on exposing the service so the application is available outside the cluster. The combination of MQTT brokers and Zookeeper should help manage network traffic while also carrying out coordination, reliabilty and replication. This distributed system should be able to solve the issue of high network traffic, and managing various communication policies.
 
-## TL:DR
+## TL;DR
 My idea for this project is to be able to have multiple brokers respond and serve as many publishers and subscribers as possible. I want to use zookeeper because I think that having a replication of all the topics, subscribers, publishers, and bank is a great way to keep an application more reliable. 
 I decided zookeeper was the best method for managing my brokers because of the tree hierarchy already implemented within the leader, and other servers. I think that znodes can be very successiful as well due to the "watcher" feature which allows
 servers to watch for changes in different znodes and be alerted when there is a change. I think this feature can speed up mail drops to subscribers if a server is always "watching" specific znodes. I also want to setup a banking system so the server doesn't get overloaded.
