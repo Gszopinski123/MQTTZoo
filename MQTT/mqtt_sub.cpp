@@ -5,19 +5,54 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <cstring>
+#include <signal.h>
 using namespace std;
 #define PORT 5001
 char* firstMessage(void);
 int parseAck(char* buf);
 char* formatMessage(int code ,char * buffer, char * topic);
+static char *topic = (char*)malloc(sizeof(char)*256);
+static int socketfd;
+void handle_signal(int signum) {
+    /* unsubscribe here! */
+    send(socketfd,formatMessage(10,NULL,topic),511,0);
+    unsigned char b[5];
+    bzero(b,5);
+    b[0] = 0xE0;
+    send(socketfd, b, 16, 0);
+    close(socketfd);
+    exit(0);
+}
 int main(int argc, char** argv) {
+    signal(SIGINT, handle_signal);
+    char *ip = (char*)malloc(sizeof(char)*64);
+    int flags[2] = {0,0};
+    if (argc > 1) {
+        for (int i = 1; i != argc-1; i++) {
+            if (!getopt(i,argv,"-h")) {
+                ip = argv[i+1];
+                flags[0] = 1;
+            } else if (!getopt(i, argv, "-t")) {
+                topic = argv[i+1];
+                flags[1] = 1;
+            }
+        }
+        
+    }
     sockaddr_in address;
-    int socketfd = socket(AF_INET, SOCK_STREAM, 0);
+    socketfd = socket(AF_INET, SOCK_STREAM, 0);
     if (socketfd < 0) {
         printf("Socket Failure!\n");
         exit(1);
     }
-    address.sin_addr.s_addr = INADDR_ANY;
+    if (flags[0]) {
+        inet_pton(AF_INET,ip,&address.sin_addr.s_addr);
+    } else {
+        address.sin_addr.s_addr = INADDR_ANY;
+    }
+    if (!flags[1]) {
+        memcpy(topic,"Testing/",8);
+    }
     address.sin_port = htons(PORT);
     address.sin_family = AF_INET;
     char *buf = firstMessage();
@@ -36,7 +71,7 @@ int main(int argc, char** argv) {
         printf("Failed Connection!\n");
         exit(1);
     }
-    send(socketfd,formatMessage(8,"","Testing/"),511,0);
+    send(socketfd,formatMessage(8,NULL,topic),511,0);
     while (1) {
         bzero(buf,512);
         int bytes = recv(socketfd,buf,511,0);
@@ -106,6 +141,22 @@ char* formatMessage(int code ,char * buffer, char * topic) {
         memcpy(buf+offset,buffer,payloadLen);
         return buf;
     } else if (code == 8) {
+        buf[offset++] |= (code << 4);
+        int variableLength = 2 + strlen(topic);
+        for (int i = 0; i != 4; i++) {
+            buf[offset++] = variableLength >> ((3-i) *8);
+        }
+        short numOfRequests = 1;
+        for (int i = 0; i != 2; ++i) {
+            buf[offset++] = numOfRequests >> ((1-i) *8);
+        }
+        short topicLen = strlen(topic);
+        for (int i = 0; i != 2; ++i) {
+            buf[offset++] = topicLen >> ((1-i) *8);
+        }
+        memcpy(buf+offset,topic,topicLen);
+        return buf;
+    } else if (code == 10) {
         buf[offset++] |= (code << 4);
         int variableLength = 2 + strlen(topic);
         for (int i = 0; i != 4; i++) {
