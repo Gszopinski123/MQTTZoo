@@ -5,13 +5,14 @@
 #define PORT 5001
 using namespace std;
 
-enum messagerType { PUB, SUB, ERR };
+enum messagerType { PUB, SUB, ERR, UNS };
 class Messager {
     private:
         messagerType t;
         string topic;
         string ipaddr;
         int fd;
+        int goodConnect;
     public:
         Messager() : t(ERR), topic(""), ipaddr(""), fd(-1) {}
         Messager(messagerType it, string itopic) {
@@ -27,6 +28,18 @@ class Messager {
                 ipaddr += iipaddr[i];
             }
         }
+        void setGoodConnect(int i) {
+            goodConnect = i;
+        }
+        int getGoodConnect(void) {
+            return goodConnect;
+        }
+        void setT(messagerType it) {
+            t = it;
+        }
+        messagerType getT(void) {
+            return t;
+        }
         void setFd(int ifd) {
             fd = ifd;
         }
@@ -38,5 +51,8 @@ class Messager {
         }
         string getTopic(void) {
             return topic;
+        }
+        void setTopic(string itopic) {
+            topic = itopic;
         }
 };
