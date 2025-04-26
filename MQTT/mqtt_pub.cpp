@@ -5,11 +5,22 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <cstring>
+#include <signal.h>
 using namespace std;
 #define PORT 5001
 char* firstMessage();
 int parseAck(char* buf);
 char* formatMessage(int code, char* buffer, char* topic);
+static int socketfd;
+void handleSignal(int signum) {
+    unsigned char b[5];
+    bzero(b,5);
+    b[0] = 0xE0;
+    send(socketfd, b, 16, 0);
+    close(socketfd);
+    exit(0);
+}
+
 int main(int argc, char** argv) {
     char* addressName = (char*)malloc(sizeof(char)*64);
     char* topic = (char*)malloc(sizeof(char)*256);
@@ -26,7 +37,8 @@ int main(int argc, char** argv) {
         }
     }
     sockaddr_in address;
-    int socketfd = socket(AF_INET, SOCK_STREAM, 0);
+    socketfd = socket(AF_INET, SOCK_STREAM, 0);
+    signal(SIGINT, handleSignal);
     if (socketfd < 0) {
         printf("Socket Failure!\n");
         exit(1);
