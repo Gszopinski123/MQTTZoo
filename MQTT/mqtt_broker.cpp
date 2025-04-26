@@ -60,8 +60,7 @@ int main(int argc, char** argv) {
                         if (topic_to_Sub.find(m.getTopic()) != topic_to_Sub.end()) {
                             vector<int> j = topic_to_Sub[m.getTopic()];
                             for (int i = 0; i != j.size(); i++) {
-                                if (who[j[i]].getT() == ERR) printf("Shouldn't get a message!");
-                                if (send(j[i],mes,511,MSG_NOSIGNAL) <= -1) {
+                                if (send(j[i],mes,strlen(mes),MSG_NOSIGNAL) <= -1) {
                                     FD_CLR(j[i],&current_sockets);
                                     who[j[i]].setT(ERR);
                                 }
@@ -77,6 +76,14 @@ int main(int argc, char** argv) {
                             vector<int> j = {m.getFd()};
                             topic_to_Sub[m.getTopic()] = j;
                         }
+                    } else if (m.gett() == UNS) {
+                        vector<int> j = topic_to_Sub[m.getTopic()];
+                        vector<int> k = {};
+                        for (int i = 0; i != j.size(); i++) {
+                            if (m.getFd() != j[i])
+                                k.push_back(j[i]);
+                        }
+                        topic_to_Sub[m.getTopic()] = k;
                     }
                 }
             }
@@ -177,7 +184,7 @@ char * parseGeneralMessage(Messager* m, char* buf) {
         for (int i = 0; i != 2; ++i)
             topicLength |= buf[offset++] << ((1 - i) * 8);
         payloadLength = variableLength - topicLength;
-        char * payload = (char*)malloc(sizeof(char)*payloadLength);
+        char * payload = (char*)malloc(sizeof(char)*(payloadLength+1));
         bzero(payload,payloadLength);
         for (int i = 0; i != topicLength; i++) {
             topic = topic + buf[offset++];
@@ -185,7 +192,7 @@ char * parseGeneralMessage(Messager* m, char* buf) {
         for (int i = 0; i != payloadLength; i++) {
             payload[i] = buf[offset++];
         }
-        buf[offset] = '\0';
+        payload[payloadLength] = '\0';
         m->setTopic(topic);
         m->setT(PUB);
         return payload;
@@ -219,6 +226,8 @@ char * parseGeneralMessage(Messager* m, char* buf) {
         m->setT(ERR);
         return NULL;
     } else if ((mesType >> 4) == 10) {// unsubscribe
+        m->setT(UNS);
+        return NULL;
     } else {
         printf("Unrecognized Message Type!\n");
         m->setT(ERR);
