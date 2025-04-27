@@ -43,6 +43,7 @@ int main(int argc, char** argv) {
                     send(m->getFd(),ackMessage(m->getGoodConnect()),5,0);
                     FD_SET(m->getFd(),&current_sockets);
                     recv(m->getFd(),dummy,512,0);
+                    cout << "New Connection" << endl;
                 } else {
                     Messager m = who[i];
                     bzero(buf,511);
