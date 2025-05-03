@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: broker-gszopin-sset
+spec:
+  serviceName: "broker-gszopin-svc"
+  replicas: 3
+  selector:
+    matchLabels:
+      app: broker-gszopin
+  template:
+    metadata:
+      labels:
+        app: broker-gszopin
+    spec:
+      containers:
+      - name: broker-gszopin
+        image: gszopinski123/broker-gszopin:broker
+        ports:
+        - containerPort: 5001

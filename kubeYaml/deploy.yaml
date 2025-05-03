@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: broker-gszopin-svc
+spec:
+  selector:
+    app: broker-gszopin
+  ports:
+     - protocol: TCP
+       port: 5001
+       targetPort: 5001
+       name: broker-gszopin-svc
+  clusterIP: None
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zk-gszopin-svc
+spec:
+  selector:
+    app: zk-gszopin
+  ports:
+  - port: 2181
+    targetPort: 2181
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zk-gszopin-sset
+spec:
+  serviceName: "zk-gszopin-svc"
+  replicas: 3
+  selector:
+    matchLabels:
+      app: zk-gszopin
+  template:
+    metadata:
+      labels:
+        app: zk-gszopin
+    spec:
+      containers:
+      - name: zk-gszopin
+        image: gszopinski123/zk-gszopin:zookeeper
+        command: ["/bin/bash", "-c", "expr $(echo $(hostname) | awk -F 'sset-' '{print $2}') + 1 > /zookeeper/zookeeper-data/myid && ./apache-zookeeper-3.9.3-bin/bin/zkServer.sh start-foreground"]        
+        ports:
+          - containerPort: 2181
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: broker-gszopin-sset
+spec:
+  serviceName: "broker-gszopin-svc"
+  replicas: 3
+  selector:
+    matchLabels:
+      app: broker-gszopin
+  template:
+    metadata:
+      labels:
+        app: broker-gszopin
+    spec:
+      containers:
+      - name: broker-gszopin
+        image: gszopinski123/broker-gszopin:broker
+        ports:
+        - containerPort: 5001
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: broker-gszopin-external-svc
+spec:
+  selector:
+    app: broker-gszopin
+  ports:
+    - protocol: TCP
+      port: 5001    
+      targetPort: 5001 
+  type: LoadBalancer  

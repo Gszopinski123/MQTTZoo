@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zk-gszopin-sset
+spec:
+  serviceName: "zk-gszopin-svc"
+  replicas: 3
+  selector:
+    matchLabels:
+      app: zk-gszopin
+  template:
+    metadata:
+      labels:
+        app: zk-gszopin
+    spec:
+      containers:
+      - name: zk-gszopin
+        image: gszopinski123/zk-gszopin:zookeeper
+        command: ["/bin/bash", "-c", "expr $(echo $(hostname) | awk -F 'sset-' '{print $2}') + 1 > /zookeeper/zookeeper-data/myid && ./apache-zookeeper-3.9.3-bin/bin/zkServer.sh start-foreground"]        
+        ports:
+          - containerPort: 2181
