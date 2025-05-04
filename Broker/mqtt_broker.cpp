@@ -7,20 +7,41 @@
 #include <string.h>
 #include <unordered_map>
 #include <vector>
+#include <netdb.h>
+#include <unistd.h>
 #define PORT 5001
+#define zookeeper_port 2181
 using namespace std;
 #include "mqtt_broker.h"
 
-
+char* convertAddress(char ip[], char* newIp);
 void* parseConnection(char *buf);
 void* acceptConnection(int sockfd);
 char * ackMessage(char sessionflag);
 char * parseGeneralMessage(Messager* m, char* buf);
 int setupServer(void);
 int main(int argc, char** argv) {
+    int flag[2] = {0};
+    char host[128] = "zk-gszopin-sset-x.zk-gszopin-svc.default.svc.cluster.local";
+    char newHost[128] = {0};
+    char* ip = (char*)malloc(sizeof(char)*128);
+    if (argc > 1) {
+        for (int i = 1; i != argc-1; i++) {
+            if (!strcmp(argv[i],"-t")) {
+                flag[0] = i+1;
+            }
+        }
+    }
+    if (flag[1]) {
+        strcpy(newHost,host);
+        strcpy(newHost+16,argv[flag[0]]);
+        strcpy(newHost+16+strlen(argv[flag[0]]),host+17);
+        ip = convertAddress(newHost,ip);
+        cout << ip << endl;
+    }
     fd_set current_sockets, ready_sockets;
     unordered_map<int, Messager> who;
-    unordered_map<string, vector<int>> topic_to_Sub;
+    unordered_map<string, vector<int> > topic_to_Sub;
     char buf[512];
     char dummy[512];
     int socketfd = setupServer();
@@ -74,12 +95,13 @@ int main(int argc, char** argv) {
                             j.push_back(m.getFd());
                             topic_to_Sub[m.getTopic()] = j;
                         } else {
-                            vector<int> j = {m.getFd()};
+                            vector<int> j; 
+                            j.push_back(m.getFd());
                             topic_to_Sub[m.getTopic()] = j;
                         }
                     } else if (m.gett() == UNS) {
                         vector<int> j = topic_to_Sub[m.getTopic()];
-                        vector<int> k = {};
+                        vector<int> k;
                         for (int i = 0; i != j.size(); i++) {
                             if (m.getFd() != j[i])
                                 k.push_back(j[i]);
@@ -234,5 +256,26 @@ char * parseGeneralMessage(Messager* m, char* buf) {
         m->setT(ERR);
         return NULL;
     }
+    return NULL;
+}
+char* convertAddress(char ip[],char* newIp) {
+    struct addrinfo hints, *res, *p;
+    void* addr;
+    char ipv4[128];
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    getaddrinfo(ip, "2181", &hints, &res);
+    p = res;
+    while (res) {
+        struct sockaddr_in *address = (struct sockaddr_in*)res->ai_addr;
+        addr = &(address->sin_addr);
+        inet_ntop(res->ai_family, addr, ipv4, sizeof(ipv4));
+        inet_ntop(res->ai_family, addr, ipv4, sizeof(ipv4));
+        res = res->ai_next;
+    }
+    freeaddrinfo(p);
+    for (int i = 0; i != strlen(ipv4); i++) 
+        newIp[i] = ipv4[i];
     return NULL;
 }
