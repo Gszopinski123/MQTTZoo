@@ -23,7 +23,8 @@ An MQTT implementation that uses Apache Zookeeper
     * -h is if you need to select the host but if you are running this on a local machine it will default to localhost
 * you should leave a terminal open for the publisher and subscriber
   * for the publisher to send a message the command line will do, just hit enter with after the characters you want to send, if you wish to terminate the session just hit enter with no characters.
-  * for the subscriber just leave the terminal open and ctrl-c to close the connection when you are done with it. 
+  * for the subscriber just leave the terminal open and ctrl-c to close the connection when you are done with it.
+* if you wish to see connection and some general print out messages you can shell into any of the brokers and they will constantly printout messages/Debugging messages.
 ### Details
 This Application as stated as above and in the proposal is a Distributed Message Broker System that uses some of the semantics of MQTT and uses Zookeeper for replication, coordination, reliability and Availability. 
 More about the build... I use Docker for containerization and Kubernetes for Orchestration. I used two stateful sets that contain 3 pods per set. The first set is for the message brokers and the second set is for the zookeeper ensemble. I then use two headless services for DNS access and connectivity. I finally have a load balancer that distributes network traffic across the 3 brokers via the minikube tunnel. All of the General information/code can be found in the deploy.yaml file. 
