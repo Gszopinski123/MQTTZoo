@@ -31,7 +31,7 @@ An MQTT implementation that uses Apache Zookeeper
       * if you want a certain topic, list it as is without the first forward slash and any slashes at the end of the topic (i.e., see/you/later/alligator). 
     * -h is if you need to select the host but if you are running this on a local machine it will default to localhost
 * you should leave a terminal open for the publisher and subscriber
-  * for the publisher to send a message the command line will do, just hit enter with after the characters you want to send, if you wish to terminate the session just hit enter with no characters.
+  * for the publisher to send a message the command line will do, just hit enter after the characters you want to send, if you wish to terminate the session just hit enter with no characters.
   * for the subscriber just leave the terminal open and ctrl-c to close the connection when you are done with it.
 * if you wish to see connection and some general print out messages you can shell into any of the brokers and they will constantly printout messages/Debugging messages.
 ### Details
