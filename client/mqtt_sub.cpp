@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
         address.sin_addr.s_addr = INADDR_ANY;
     }
     if (!flags[1]) {
-        memcpy(topic,"Testing/",8);
+        memcpy(topic,"/Testing",8);
     }
     address.sin_port = htons(PORT);
     address.sin_family = AF_INET;
@@ -75,6 +75,9 @@ int main(int argc, char** argv) {
     while (1) {
         bzero(buf,512);
         int bytes = recv(socketfd,buf,511,0);
+        if (bytes == 0) {
+            break;
+        }
         buf[bytes] = '\0';
         printf("Bytes: %d, Message: %s\n",bytes,buf);
     }
