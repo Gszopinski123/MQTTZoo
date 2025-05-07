@@ -1,8 +1,16 @@
 # MQTTZoo
 An MQTT implementation that uses Apache Zookeeper
 
+### Before Getting Started
+* please allow at least 5 minutes after building the system.
+  * The zookeeper ensemble tends to fail mulitple times before configuring
+  * I also have set the build for the brokers to wait 5 minutes before trying to to connect to the ensemble.
+  * Carry on!
+  
 ## Getting Started
-
+* download all the necessary files [here](https://github.com/Gszopinski123/MQTTZoo/archive/refs/heads/main.zip) (warning: zip download)
+* you can find the broker code in the broker subdirectory.
+* you can find the client code in the client subdirectory.
 ### Dependencies
  * C++ Compiler
  * Minikube or equivalent
