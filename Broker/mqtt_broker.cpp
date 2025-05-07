@@ -1,3 +1,5 @@
+#define THREADED
+#include <zookeeper/zookeeper.h>
 #include <stdio.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -9,39 +11,61 @@
 #include <vector>
 #include <netdb.h>
 #include <unistd.h>
+#include <time.h>
+#include "mqtt_broker.h"
 #define PORT 5001
 #define zookeeper_port 2181
 using namespace std;
-#include "mqtt_broker.h"
 
 char* convertAddress(char ip[], char* newIp);
 void* parseConnection(char *buf);
 void* acceptConnection(int sockfd);
 char * ackMessage(char sessionflag);
 char * parseGeneralMessage(Messager* m, char* buf);
+void * intializeZK(zhandle_t *zh);
+char* setupMessage(int flag, char* message, char* path, zhandle_t *zh);
 int setupServer(void);
+char* getPath(const char *path);
+void my_watcher(zhandle_t *zh, int type, int state, const char *path, void *watcherCtx);
+unordered_map<int, Messager> who;
+unordered_map<string, vector<int> > topic_to_Sub;
+fd_set current_sockets, ready_sockets;
 int main(int argc, char** argv) {
     int flag[2] = {0};
     char host[128] = "zk-gszopin-sset-x.zk-gszopin-svc.default.svc.cluster.local";
     char newHost[128] = {0};
+    char topic_handle[] = "/topic";
     char* ip = (char*)malloc(sizeof(char)*128);
     if (argc > 1) {
         for (int i = 1; i != argc-1; i++) {
             if (!strcmp(argv[i],"-t")) {
                 flag[0] = i+1;
+                flag[1] = 1;
             }
         }
+    } else {
+        printf("Not enough Arguments!\n");
+        exit(1);
     }
     if (flag[1]) {
+        int offset = 0;
         strcpy(newHost,host);
-        strcpy(newHost+16,argv[flag[0]]);
-        strcpy(newHost+16+strlen(argv[flag[0]]),host+17);
+        offset += 16;
+        strcpy(newHost+offset,argv[flag[0]]);
+        offset += strlen(argv[flag[0]]);
+        strcpy(newHost+offset,host+17);
+        offset += strlen(host+17);
         ip = convertAddress(newHost,ip);
+        strcpy(ip+strlen(ip),":2181");
         cout << ip << endl;
     }
-    fd_set current_sockets, ready_sockets;
-    unordered_map<int, Messager> who;
-    unordered_map<string, vector<int> > topic_to_Sub;
+    zhandle_t *zh = zookeeper_init(ip,my_watcher,2000,0,0,0);
+    if (zh == NULL) {
+        printf("Bad Connection!\n");
+        exit(1);
+    }
+    intializeZK(zh);
+    
     char buf[512];
     char dummy[512];
     int socketfd = setupServer();
@@ -79,25 +103,54 @@ int main(int argc, char** argv) {
                     if (m.gett() == ERR) {
                         FD_CLR(i,&current_sockets);
                     } else if (m.gett() == PUB) {
-                        if (topic_to_Sub.find(m.getTopic()) != topic_to_Sub.end()) {
-                            vector<int> j = topic_to_Sub[m.getTopic()];
-                            for (int i = 0; i != j.size(); i++) {
-                                if (send(j[i],mes,strlen(mes),MSG_NOSIGNAL) <= -1) {
-                                    FD_CLR(j[i],&current_sockets);
-                                    who[j[i]].setT(ERR);
-                                }
-                            }
-                            
-                        }
-                    } else if (m.gett() == SUB) {
-                        if (topic_to_Sub.find(m.getTopic()) != topic_to_Sub.end()) {
-                            vector<int> j = topic_to_Sub[m.getTopic()];//shallow copy
-                            j.push_back(m.getFd());
-                            topic_to_Sub[m.getTopic()] = j;
+                        int offset = 0;
+                        char topic_path[256] = {0};
+                        offset = strlen(topic_handle);
+                        memcpy(topic_path,topic_handle,offset);
+                        memcpy(topic_path+offset,m.getTopic().c_str(),strlen(m.getTopic().c_str()));
+                        offset += strlen(m.getTopic().c_str());
+                        topic_path[offset++] = '\0';
+                        int rt = zoo_exists(zh,topic_path,1,NULL);
+                        if (rt == ZOK) {
+                            cout << "Znode already Exists!" << endl;
+                            setupMessage(1,mes,topic_path,zh);
+                        } else if (rt == ZNONODE) {
+                            zoo_create(zh,topic_path,NULL,-1,&ZOO_OPEN_ACL_UNSAFE,0,NULL,0);
+                            cout << "Znode Created!" << endl;
+                            setupMessage(0,mes,topic_path,zh);
+                            cout << "Data sent to Znode!" << endl;
                         } else {
+                            cout << "There was an error!" << endl;
+                        }    
+                    } else if (m.gett() == SUB) {
+                        int offset = 0;
+                        char topic_path[256] = {0};
+                        offset = strlen(topic_handle);
+                        memcpy(topic_path,topic_handle,offset);
+                        memcpy(topic_path+offset,m.getTopic().c_str(),strlen(m.getTopic().c_str()));
+                        int rt = zoo_exists(zh,topic_path,1,NULL);
+                        if (rt == ZOK) {
+                            cout << "Znode already Exists!" << endl;
+                        } else if (rt == ZNONODE) {
+                            zoo_create(zh,topic_path,NULL,-1,&ZOO_OPEN_ACL_UNSAFE,0,NULL,0);
+                            cout << "Znode Created!" << endl;
+                        } else {
+                            cout << "There was an error!" << endl;
+                        }
+                        cout << topic_path << endl;
+                        if (topic_to_Sub.find(topic_path) != topic_to_Sub.end()) {
+                            cout << "Old Topic" << endl;
+                            vector<int> j = topic_to_Sub[topic_path];//shallow copy
+                            j.push_back(m.getFd());
+                            topic_to_Sub[topic_path] = j;
+                            cout << "Topic: " << topic_path << endl;
+                            cout << "Length: "<< strlen(topic_path) << endl;
+                            cout << "Number of Sockets!: " << topic_to_Sub[topic_path].size() << endl;
+                        } else {
+                            cout << "New Topic" << endl;
                             vector<int> j; 
                             j.push_back(m.getFd());
-                            topic_to_Sub[m.getTopic()] = j;
+                            topic_to_Sub[topic_path] = j;
                         }
                     } else if (m.gett() == UNS) {
                         vector<int> j = topic_to_Sub[m.getTopic()];
@@ -271,11 +324,171 @@ char* convertAddress(char ip[],char* newIp) {
         struct sockaddr_in *address = (struct sockaddr_in*)res->ai_addr;
         addr = &(address->sin_addr);
         inet_ntop(res->ai_family, addr, ipv4, sizeof(ipv4));
-        inet_ntop(res->ai_family, addr, ipv4, sizeof(ipv4));
         res = res->ai_next;
     }
     freeaddrinfo(p);
     for (int i = 0; i != strlen(ipv4); i++) 
         newIp[i] = ipv4[i];
+    return newIp;
+}
+/*
+ * Intialize bank
+ * Intialize topic
+*/
+void * intializeZK(zhandle_t *zh) {
+    int rc = zoo_exists(zh,"/bank",0,NULL);
+    if (rc == ZOK) {
+        //printf("Bank Already Exists!\n");
+    } else if (rc == ZNONODE) {
+        char value[5] = {0};
+        int vault = 100000;
+        for (int i = 0; i != 4; i++)
+            value[i] = (0xff&(vault >> ((3-i)*8)));
+        value[4] = '\0';
+        int buffer_len = 5;
+        zoo_create(zh,"/bank",value,buffer_len,&ZOO_OPEN_ACL_UNSAFE,0,NULL,0);
+    } else {
+        printf("Failure checking!\n");
+    }
+    rc = zoo_exists(zh,"/topic",0,NULL);
+    if (rc == ZOK) {
+        //printf("Bank Already Exists!\n");
+    } else if (rc == ZNONODE) {
+        //printf("Creating Topics\n");
+        zoo_create(zh,"/topic","ListOfTopics\0",strlen("ListOfTopics\0"),&ZOO_OPEN_ACL_UNSAFE,0,NULL,0);
+    } else {
+        printf("Failure checking!\n");
+    }
+    rc = zoo_exists(zh,"/time",0,NULL);
+    if (rc == ZOK) {
+        //printf("Bank Already Exists!\n");
+    } else if (rc == ZNONODE) {
+        //printf("Creating Topics\n");
+        long start_time = time(NULL);
+        char epoch[9] = {0};
+        epoch[8] = '\0';
+        for (int i = 0; i != 8; i++) {
+            epoch[i] = (0xff&(start_time >> ((7-i)*8)));
+        }
+        zoo_create(zh,"/time",epoch,9,&ZOO_OPEN_ACL_UNSAFE,0,NULL,0);
+    } else {
+        printf("Failure checking!\n");
+    }
+    //sanity check
+    char buffer[512] = {0};
+    int buffer_len = sizeof(buffer)-1;
+    rc = zoo_get(zh,"/bank", 0, buffer,&buffer_len, NULL);
+    if (rc == ZOK) {
+    } else if (rc == ZNONODE) {
+        printf("No Node!\n");
+    } else {
+        printf("Error!\n");
+    }
+    buffer_len = sizeof(buffer)-1;
+    bzero(buffer,512);
+    rc = zoo_get(zh,"/time", 0, buffer,&buffer_len, NULL);
+    if (rc == ZOK) {
+    } else if (rc == ZNONODE) {
+        printf("No Node!\n");
+    } else {
+        printf("Error!\n");
+    }
+    buffer_len = sizeof(buffer)-1;
+    rc = zoo_get(zh,"/topic",0,buffer,&buffer_len,NULL);
+    if (rc == ZOK) {
+        //printf("Data: %.*s\n",buffer_len,buffer);
+    } else if (rc == ZNONODE) {
+        printf("No Node!\n");
+    } else {
+        printf("Error!\n");
+    }
+    return NULL;
+}
+void my_watcher(zhandle_t *zh, int type, int state, const char *path, void *watcherCtx) {
+    char buffer[2048] = {0};
+    int buffer_len = 2047;
+    char message[2048] = {0};
+    int message_len = 2047;
+    if (type == ZOO_CHANGED_EVENT) {
+        cout << "Something Changed!" << endl;
+        zoo_get(zh,path,1,buffer,&buffer_len,NULL);
+        memcpy(message,buffer+8,strlen(buffer+8));
+        cout << message << endl;
+        if (topic_to_Sub.find(path) != topic_to_Sub.end()) {
+            cout << "There are sockets Open" << endl;
+            vector<int> j = topic_to_Sub[path];
+            for (int i = 0; i != j.size(); i++) {
+                cout << "Sending Messages!" << endl;
+                if (send(j[i],message,strlen(message),MSG_NOSIGNAL) <= -1) {
+                    cout << "Message Not Sent!" << endl;
+                    FD_CLR(j[i],&current_sockets);
+                    who[j[i]].setT(ERR);
+                }
+            }
+        } else {
+            cout << "Making a New topic!\n";
+            vector<int> j;
+            topic_to_Sub[path] = j;
+        }
+    }
+    int rt = zoo_exists(zh,path,1,NULL);
+        if (rt != ZOK) {
+            cout << "znode does not exist (yet)!" << endl;
+        } else {
+            cout << "Watch Relaunched!" << endl;
+        }
+}
+char* getPath(const char *path) {
+    int slashes = 0;
+    int offset = 0;
+    char* newPath = (char*)malloc(256*sizeof(char));
+    while (slashes != 2 && path[offset] != '\0') {
+        if (path[offset++] == '/') {
+            slashes++;
+        }
+    }
+    offset -= 1;
+    int size = strlen(path+offset);
+    memcpy(newPath,path+offset,size);
+    return newPath;
+}
+
+char* setupMessage(int flag, char* message, char* path, zhandle_t *zh) {
+    char buffer[2048] = {0};
+    int buffer_len = 2047;
+    char time_buf[9] = {0};
+    int time_buf_len = 9;
+    char bank_buf[5] = {0};
+    int bank_buf_len = 5;
+    long time = 0;
+    int vault = 0;
+    zoo_get(zh,"/time",0,time_buf,&time_buf_len,NULL);
+    for (int i = 0; i != 8; i++) {
+        time |= ((0xff)&time_buf[i]) << ((7-i)*8);
+    }
+    cout << "time: " << time << endl;
+    zoo_get(zh,"/bank",0,bank_buf,&bank_buf_len,NULL);
+    for (int i = 0; i != 4; i++) {
+        vault |= ((0xff)&bank_buf[i]) << ((3-i)*8);
+    }
+    cout << "bank: " << vault << endl;
+    int r = (rand() % 180)+60;
+    int len = strlen(message);
+    int total = r + len;
+    vault -= total;
+    int offset = 0;
+    for (int i = 0; i != 4; i++) {
+        buffer[offset++] |= (0xff & (r >> ((3-i)*8)));
+    }
+    for (int i = 0; i != 4; i++) {
+        buffer[offset++] |= ((0xff) & (total >> ((3-i)*8)));
+    }
+    memcpy(buffer+offset,message,len);
+    zoo_set(zh,path,buffer,buffer_len,-1);
+    bzero(bank_buf, 0);
+    for (int i = 0; i != 4; i++) {
+        bank_buf[i] &= (0xff & (vault >> ((3-i)*8)));
+    }
+    zoo_set(zh,"/bank",bank_buf,5,-1);
     return NULL;
 }
