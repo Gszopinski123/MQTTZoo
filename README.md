@@ -14,7 +14,7 @@ An MQTT implementation that uses Apache Zookeeper
 ### Dependencies
  * C++ Compiler
  * Minikube or equivalent
-   * if you are not using minikube you will need to find the equivalent to minkube tunnel. 
+   * if you are not using minikube you will need to find the equivalent to minikube tunnel. 
  * Docker and access to Dockerhub
  * Kubernetes
 ### Start the Application
