@@ -68,6 +68,7 @@ spec:
       containers:
       - name: broker-gszopin
         image: gszopinski123/broker-gszopin:broker
+        command: ["/bin/bash", "-c", "sleep 300 && ./mqtt_broker.o -t $(echo $(hostname) | awk -F 'sset-' '{print $2}')"]        
         ports:
         - containerPort: 5001
 ---
