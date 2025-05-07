@@ -19,7 +19,7 @@ An MQTT implementation that uses Apache Zookeeper
 * Once the build is up and running without failure for a little while compile the mqtt_pub.cpp and mqtt_sub.cpp.
   * These can take command line arguments
     * -t is for the specific topic you want if you do not specify the topic, the default is /Testing
-      * if you want a certain topic, list it as is without any forward slashes. 
+      * if you want a certain topic, list it as is without the first forward slash . 
     * -h is if you need to select the host but if you are running this on a local machine it will default to localhost
 * you should leave a terminal open for the publisher and subscriber
   * for the publisher to send a message the command line will do, just hit enter with after the characters you want to send, if you wish to terminate the session just hit enter with no characters.
