@@ -18,6 +18,7 @@ An MQTT implementation that uses Apache Zookeeper
  * Docker and access to Dockerhub
  * Kubernetes
 ### Start the Application
+ * head to the top of the MQTTZoo directory  
  * ``` bash build.sh ```
    * delete your current minikube
    * start minikube
@@ -25,7 +26,7 @@ An MQTT implementation that uses Apache Zookeeper
    * minikube tunnel to connect to the load balancer
 * Once you have started the script this will take a minute
   * In General on a first attempt of the build this shouldn't take long, however I have had builds that have taken 7 minutes due to Zookeeper failing and restarting so give this a few minutes before using it. I have set the connection between the zookeeper server and the broker to happen 5 minutes after starting each broker pod.
-* Once the build is up and running without failure for a little while compile the mqtt_pub.cpp and mqtt_sub.cpp.
+* Once the build is up and running without failure for a little while compile the mqtt_pub.cpp and mqtt_sub.cpp they should be in the client directory.
   * These can take command line arguments
     * -t is for the specific topic you want if you do not specify the topic, the default is /Testing
       * if you want a certain topic, list it as is without the first forward slash and any slashes at the end of the topic (i.e., see/you/later/alligator). 
