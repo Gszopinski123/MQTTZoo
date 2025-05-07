@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
         exit(1);
     }
     if (!flags[1]) {
-        char eTopic[] = "Testing/";
+        char eTopic[] = "/Testing";
         memcpy(topic,eTopic,strlen(eTopic));
     }
     char firstMeg[16] = "Hello There";
