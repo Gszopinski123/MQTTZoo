@@ -19,7 +19,7 @@ An MQTT implementation that uses Apache Zookeeper
  * Kubernetes
 ### Start the Application
  * head to the top of the MQTTZoo directory  
- * ``` bash build.sh ```
+ * run ``` bash build.sh ``` in the top level the command will do these 4 things if you do not have these available you can substitute.
    * delete your current minikube
    * start minikube
    * apply the deploy.yaml
